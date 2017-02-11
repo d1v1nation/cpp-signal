@@ -71,7 +71,7 @@ struct signal<R(Args...)> {
     // one could specify
 
     R operator()(Args... args) {
-        bool entrancy = true;
+        entrancy = true;
         R result;
 
         auto ae = --callbacks.end();

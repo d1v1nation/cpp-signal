@@ -19,6 +19,8 @@ template <int Num>
 struct funobj {
     signal<int(void)>::connection* conn;
 
+    funobj() : conn(nullptr) {};
+    funobj(signal<int(void)>::connection* o) : conn(o) {};
     int operator()() {
         std::cout << "funobj<" << Num << ">()" << '\n';
 
@@ -88,6 +90,6 @@ int main() {
     facref = &fs;
 
     fs.connect(factorisig);
-    std::cout << "factorisig! " << fs(5, 1) << '\n';
+    std::cout << "factorisig! " << fs(8, 1) << '\n';
 
 }
