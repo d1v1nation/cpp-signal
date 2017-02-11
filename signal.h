@@ -33,7 +33,7 @@ struct signal<R(Args...)> {
             parent.enq_dc(uniq_id);
         }
 
-        signal get_parent() {
+        signal& get_parent() {
             return parent;
         }
 
