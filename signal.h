@@ -93,7 +93,7 @@ private:
     std::vector<int> rm_q;
     std::vector<connection> add_q;
     bool entrancy;
-    int cnt = 0;
+    unsigned cnt = 0;
 
     friend class connection;
 
