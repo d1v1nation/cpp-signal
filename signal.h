@@ -42,7 +42,7 @@ struct signal<R(Args...)> {
         }
 
     private:
-        callback_tp cback;
+        callback_tp cback; // less copies please
         signal& parent;
         int uniq_id;
 
@@ -128,9 +128,13 @@ private:
             find_and_remove(id);
         }
 
+        rm_q.clear();
+
         for (connection& c : add_q) {
             callbacks.emplace_back(std::move(c));
         }
+
+        add_q.clear();
     }
 
 };
