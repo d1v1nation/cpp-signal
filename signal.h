@@ -8,6 +8,7 @@
 #include <list>
 #include <functional>
 #include <queue>
+#include "small_cont.h"
 
 template <typename R>
 struct signal;
@@ -15,26 +16,66 @@ struct signal;
 template <typename R, typename... Args>
 struct signal<R(Args...)> {
 
+    template <typename T>
+    using list = small_cont<T>;
+
     typedef typename std::function<R(Args...)> callback_tp;
+
+    struct conref {
+        bool operator==(conref const & other) const {
+            return other.uniq_id == uniq_id;
+        }
+
+        conref(conref const &conref) = default;
+        conref(conref &&conref) = default;
+
+        conref& operator=(conref const &other) = default;
+        conref& operator=(conref &&other) = default;
+
+        bool is_alive() {
+            return parent->query_liveness(uniq_id);
+        }
+
+        void disconnect() {
+            parent->enq_dc(uniq_id);
+        }
+
+        signal& get_parent() {
+            return *parent;
+        }
+
+        int get_uniq_id() {
+            return uniq_id;
+        }
+
+    private:
+        signal* parent;
+        int uniq_id;
+
+        conref(int lp, signal* sig) : uniq_id(lp), parent(sig) {};
+
+        friend class signal;
+    };
 
     struct connection {
         bool operator==(connection const & other) const {
             return other.uniq_id == uniq_id;
         }
 
+
         connection(connection const &other) = default;
-        connection(connection &&other) = default;
+//        connection(connection &&other) = default;
 
         bool is_alive() {
-            return parent.query_liveness(uniq_id);
+            return parent->query_liveness(uniq_id);
         }
 
         void disconnect() {
-            parent.enq_dc(uniq_id);
+            parent->enq_dc(uniq_id);
         }
 
         signal& get_parent() {
-            return parent;
+            return *parent;
         }
 
         int get_uniq_id() {
@@ -43,11 +84,11 @@ struct signal<R(Args...)> {
 
     private:
         callback_tp cback; // less copies please
-        signal& parent;
+        signal* parent;
         int uniq_id;
 
         template <typename F>
-        connection(F f, int lp, signal& sig) : cback(std::move(f)), uniq_id(lp), parent(sig) {};
+        connection(F f, int lp, signal* sig) : cback(std::move(f)), uniq_id(lp), parent(sig) {};
 
         friend class signal;
     };
@@ -55,16 +96,17 @@ struct signal<R(Args...)> {
     signal() : callbacks(), entrancy(false), cnt(0) {};
 
     template <typename F>
-    connection connect(F func) {
-        connection c(func, cnt++, *this);
+    conref connect(F func) {
+        connection c(func, cnt, this);
 
         if (!entrancy) {
-            callbacks.push_back(c);
+            callbacks.emplace_back(c);
         } else {
-            add_q.push_back(c);
+            add_q.emplace_back(c);
         }
 
-        return c;
+        cnt++;
+        return conref(cnt - 1, this);
     }
 
     // does not work for void
@@ -74,12 +116,15 @@ struct signal<R(Args...)> {
         entrancy = true;
         R result;
 
-        auto ae = --callbacks.end();
-        for (auto it = callbacks.begin(); it != ae; it++){
+        auto ae = callbacks.end();
+        auto trail = callbacks.begin();
+        (*trail).cback(std::forward<Args>(args)...);
+        for (auto it = ++callbacks.begin(); it != ae; it++){
             (*it).cback(std::forward<Args>(args)...);
+            trail++;
         }
 
-        result = (*ae).cback(std::forward<Args>(args)...);
+        result = (*trail).cback(std::forward<Args>(args)...);
 
         entrancy = false;
 
@@ -88,17 +133,19 @@ struct signal<R(Args...)> {
         return result;
     }
 
+    // connection is either in queue or active
+    // single copy of functional object
 private:
-    std::list<connection> callbacks;
-    std::vector<int> rm_q;
-    std::vector<connection> add_q;
+    list<connection> callbacks;
+    list<int> rm_q;
+    list<connection> add_q;
     bool entrancy;
     unsigned cnt = 0;
 
     friend class connection;
 
     bool query_liveness(int conn_id) {
-        for (connection& c : callbacks) {
+        for (conref& c : callbacks) {
             if (c.uniq_id == conn_id)
                 return true;
         }
@@ -115,7 +162,7 @@ private:
     }
 
     void find_and_remove(int conn_id) {
-        for (typename std::list<connection>::iterator it = callbacks.begin(); it != callbacks.end(); it++) {
+        for (auto it = callbacks.begin(); it != callbacks.end(); it++) {
                 if ((*it).uniq_id == conn_id) {
                     callbacks.erase(it);
                     return;
