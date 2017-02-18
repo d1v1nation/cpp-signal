@@ -113,6 +113,7 @@ struct signal<R(Args...)> {
     // one could specify
 
     R operator()(Args... args) {
+        bool prev = entrancy;
         entrancy = true;
         R result;
 
@@ -126,7 +127,7 @@ struct signal<R(Args...)> {
 
         result = (*trail).cback(std::forward<Args>(args)...);
 
-        entrancy = false;
+        entrancy = prev;
 
         pop_qs();
 
