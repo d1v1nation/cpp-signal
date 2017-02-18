@@ -32,7 +32,7 @@ public:
 
 
     class iterator { // only over shorts, else just pull out list's iterator
-        small_cont* const parent;
+        small_cont* parent;
         typename long_tp::iterator inner_iter;
         bool endbool;
 
@@ -112,8 +112,10 @@ public:
     void emplace_back(Tps&&... args) {
         int i = cont.index();
         if (i == 0) {
-            cont.~vartype();
-            new(&cont) vartype(T(std::forward<Tps>(args)...));
+//            cont.~vartype();
+//            new(&cont) vartype(T(std::forward<Tps>(args)...));
+
+            cont.template emplace<T>(std::forward<Tps>(args)...);
         } else {
             if (i == 1) {
                 T temp = std::move(std::get<1>(cont));
