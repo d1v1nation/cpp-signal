@@ -62,33 +62,13 @@ struct signal<R(Args...)> {
             return other.uniq_id == uniq_id;
         }
 
-
         connection(connection const &other) = default;
-//        connection(connection &&other) = default;
-
-        bool is_alive() {
-            return parent->query_liveness(uniq_id);
-        }
-
-        void disconnect() {
-            parent->enq_dc(uniq_id);
-        }
-
-        signal& get_parent() {
-            return *parent;
-        }
-
-        int get_uniq_id() {
-            return uniq_id;
-        }
-
     private:
         callback_tp cback; // less copies please
-        signal* parent;
         int uniq_id;
 
         template <typename F>
-        connection(F f, int lp, signal* sig) : cback(std::move(f)), uniq_id(lp), parent(sig) {};
+        connection(F f, int lp) : cback(std::move(f)), uniq_id(lp) {};
 
         friend class signal;
     };
@@ -97,7 +77,7 @@ struct signal<R(Args...)> {
 
     template <typename F>
     conref connect(F func) {
-        connection c(func, cnt, this);
+        connection c(func, cnt);
 
         if (!entrancy) {
             callbacks.emplace_back(c);
