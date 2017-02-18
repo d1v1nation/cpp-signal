@@ -7,4 +7,3 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
 set(SOURCE_FILES main.cpp signal.h small_cont.h)
 add_executable(signal ${SOURCE_FILES})
-add_executable(iter iterators.cpp)
